@@ -1,3 +1,10 @@
+-- Originally written by Chris Pressey, Cat's Eye Technologies.
+--
+-- SPDX-FileCopyrightText: This is free and unencumbered software released into the public domain.
+-- For more information, see the file Unlicense.txt in the LICENSES directory.
+--
+-- SPDX-License-Identifier: Unlicense
+
 require "pdf"
 
 p = PDF.new()

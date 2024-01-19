@@ -1,3 +1,9 @@
+<!--
+SPDX-FileCopyrightText: This is free and unencumbered software released into the public domain.
+
+SPDX-License-Identifier: Unlicense
+-->
+
 pdf.lua
 =======
 
@@ -9,4 +15,5 @@ really not that difficult to create a PDF file, than as a serious piece of
 equipment.  However, I just tried the test script with Lua 5.1.5, using
 Firefox 33.0 as the PDF viewer, and it still works.
 
-This work is in the public domain; see the file UNLICENSE for details.
+This work is in the public domain; see the file `LICENSES/Unlicense.txt`
+for more details.
