@@ -1,6 +1,4 @@
--- Originally written by Chris Pressey, Cat's Eye Technologies.
---
--- SPDX-FileCopyrightText: This is free and unencumbered software released into the public domain.
+-- SPDX-FileCopyrightText: In 2014, Chris Pressey, the original author of this work, placed it into the public domain.
 -- For more information, see the file Unlicense.txt in the LICENSES directory.
 --
 -- SPDX-License-Identifier: Unlicense
