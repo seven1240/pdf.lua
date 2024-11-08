@@ -15,6 +15,8 @@ PDF.new = function()
 	local catalog_obj	-- global catalog object
 	local pages_obj		-- global pages object
 	local procset_obj	-- global procset object
+	local IMAGE_ID = 0
+	local IMAGES = {}
 
 	--
 	-- Private functions.
@@ -62,6 +64,20 @@ PDF.new = function()
 				write_object(fh, v)
 			end
 			fh:write("]\n")
+		elseif obj.datatype == "image" then
+			fh:write("<<\n")
+			for k, v in pairs(obj.contents) do
+				fh:write(string.format("/%s ", k))
+				write_direct_object(fh, v)
+			end
+			fh:write(">>\nstream\n")
+			fh:write("FF0000 00FF00 0000FF FFFFFF\n")
+			fh:write("endstream\n")
+		elseif obj.datatype == "image_ref" then
+			fh:write(string.format("<< /Length %d>>\n", obj.contents:len() - 1))
+			fh:write("stream\n")
+			fh:write(obj.contents)
+			fh:write("\nendstream\n")
 		elseif obj.datatype == "stream" then
 			local len = 0
 
@@ -73,6 +89,7 @@ PDF.new = function()
 				for i, str in ipairs(obj.contents) do
 					len = len + string.len(str) + 1
 				end
+
 			end
 
 			fh:write(string.format("<< /Length %d >>\n", len))
@@ -101,7 +118,7 @@ PDF.new = function()
 	end
 
 	local write_header = function(fh)
-		fh:write("%PDF-1.0\n")
+		fh:write("%PDF-1.4\n")
 	end
 
 	local write_body = function(fh)
@@ -117,7 +134,8 @@ PDF.new = function()
 
 		xref_table_offset = fh:seek()
 		fh:write("xref\n")
-		fh:write(string.format("%d %d\n", 1, #object))
+		fh:write(string.format("%d %d\n", 0, #object + 1))
+		fh:write("0000000000 65535 f\n")
 		for i, obj in ipairs(object) do
 			fh:write(
 			    string.format("%010d %05d n \n", obj.offset, 0)
@@ -128,7 +146,7 @@ PDF.new = function()
 	local write_trailer = function(fh)
 		fh:write("trailer\n")
 		fh:write("<<\n")
-		fh:write(string.format("/Size %d\n", #object))
+		fh:write(string.format("/Size %d\n", #object + 1))
 		fh:write("/Root " .. get_ref(catalog_obj) .. "\n")
 		fh:write(">>\n")
 		fh:write("startxref\n")
@@ -152,6 +170,28 @@ PDF.new = function()
 			}
 		}
 		return font_obj
+	end
+
+	pdf.new_image = function(pdf, tab)
+		IMAGE_ID = IMAGE_ID + 1
+		local image_obj = add {
+			datatype = "image",
+			id = IMAGE_ID,
+			contents = {
+				Type = "/XObject",
+				Subtype = "/Image",
+				Width = tab.width,
+				Height = tab.height,
+				ColorSpace = "/DeviceRGB",
+				BitsPerComponent = 8,
+				Filter = "/ASCIIHexDecode",
+				-- Filter = /RunLengthDecode",
+				-- Filter = "/FlateDecode",
+				Length = tab.width * tab.height * 3 * 2,
+			}
+		}
+		table.insert(IMAGES, image_obj)
+		return image_obj
 	end
 
 	pdf.new_page = function(pdf)
@@ -199,9 +239,23 @@ PDF.new = function()
 			)
 		end
 
+		pg.add_image = function(pg, image_obj, x, y, w, h)
+			table.insert(contents,
+				string.format("q\n%d 0 0 %d %d %d cm\n/Im%s Do\nQ", w, h, x, y, image_obj.id)
+			)
+		end
+
+		-- set next pos relative to current pos
 		pg.set_text_pos = function(pg, x, y)
 			table.insert(contents,
 			    string.format("%f %f Td", x, y)
+			)
+		end
+
+		-- move text pos to absolute position
+		pg.move_to = function(pg, x, y)
+			table.insert(contents,
+			    string.format("1 0 0 1 %f %f Tm", x, y)
 			)
 		end
 
@@ -446,13 +500,28 @@ PDF.new = function()
 				    get_ref(font_obj)
 			end
 
+			-- add image
+			resources.contents.XObject = {
+				datatype = "dictionary",
+				contents = {
+				}
+			}
+			for i, img in ipairs(IMAGES) do
+				local name = "Im" .. img.id
+				resources.contents.XObject.contents[name] = get_ref(img)
+			end
+
 			this_obj = add {
 				datatype = "dictionary",
 				contents = {
 					Type = "/Page",
 					Parent = get_ref(pages_obj),
 					Contents = get_ref(contents_obj),
-					Resources = resources
+					Resources = resources,
+					MediaBox = {
+						datatype = "array",
+						contents = {0, 0, 595, 841},
+					},
 				}
 			}
 			
@@ -491,7 +560,7 @@ PDF.new = function()
 				datatype = "array",
 				contents = {}
 			},
-			Count = 0
+			Count = 0,
 		}
 	}
 
@@ -505,7 +574,7 @@ PDF.new = function()
 
 	procset_obj = add {
 		datatype = "array",
-		contents = { "/PDF", "/Text" }
+		contents = { "/PDF", "/Text", "/ImageC" }
 	}
 
 	return pdf
