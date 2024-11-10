@@ -119,6 +119,7 @@ PDF.new = function()
 
 	local write_header = function(fh)
 		fh:write("%PDF-1.4\n")
+		fh:write("%" .. string.char(0x80) .. string.char(0x82) .. string.char(0x83) .. string.char(0x85) .. "\n\n")
 	end
 
 	local write_body = function(fh)
